@@ -35,3 +35,13 @@ systems that rely on probabilistic behavior.
 Weak or predictable randomness can negatively impact both
 security-related applications and multimedia processing pipelines.
 
+## Simple Encryption Demonstration
+A minimal XOR-based encryption example is included to demonstrate
+how a pseudo-random number generator (PRNG) can be used to generate
+a keystream for encryption.
+
+This example is provided **for educational purposes only** and is
+**not cryptographically secure**. It is intended to highlight the
+importance of randomness quality in security-related systems.
+
+
