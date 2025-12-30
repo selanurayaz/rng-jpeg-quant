@@ -27,3 +27,11 @@ comparable PSNR values, indicating a favorable compression-quality trade-off.
 
 ## Technologies
 Python, NumPy, OpenCV, scikit-image
+
+## Security Perspective
+Although the implemented RNG is not cryptographically secure,
+the experiment demonstrates how randomness quality directly affects
+systems that rely on probabilistic behavior.
+Weak or predictable randomness can negatively impact both
+security-related applications and multimedia processing pipelines.
+
