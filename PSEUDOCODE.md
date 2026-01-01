@@ -1,5 +1,20 @@
 PSEUDOCODE – RSÜ (XORSHIFT32)
 
+---
+
+## Türkçe Açıklama
+Bu sözde kod, XORSHIFT32 tabanlı bir rastgele sayı üretecinin
+çalışma mantığını adım adım göstermektedir.
+
+Algoritma, verilen başlangıç değeri (seed) ile iç durumunu
+oluşturmakta ve bit kaydırma ile XOR işlemleri kullanarak
+rastgele sayı üretmektedir.
+
+Üretilen rastgele çıktıların kalitesi; monobit testi,
+ki-kare testi ve runs testi ile istatistiksel olarak
+değerlendirilmektedir.
+
+
 INPUT:
     seed (integer)
     N (number of random values to generate)
