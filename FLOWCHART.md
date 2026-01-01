@@ -1,5 +1,15 @@
 # RSÜ (XORSHIFT32) – Flowchart Description
 
+## Türkçe Açıklama
+Bu akış şeması, XORSHIFT32 algoritmasına dayalı rastgele sayı
+üretim sürecini ve ardından uygulanan istatistiksel testleri
+görsel olarak ifade etmektedir.
+
+Şema; başlangıç değeri kontrolü, rastgele sayı üretimi,
+testlerin uygulanması ve sonuçların kaydedilmesi adımlarını
+içermektedir.
+
+
 Start
   |
   v
