@@ -48,6 +48,56 @@ Bu örnek yalnızca **eğitsel amaçlıdır** ve **kriptografik olarak güvenli 
 Amaç, güvenlik sistemlerinde rastgelelik kalitesinin önemini vurgulamaktır.
 
 
+## RSÜ Statistical Test Output (Sample)
+
+The following screenshot shows the console output of the RSÜ algorithm,
+including monobit, chi-square and runs test results.
+
+![RSÜ Test Output](results/rsu_output.png)
+
+
+**Türkçe Açıklama:**  
+Aşağıdaki ekran görüntüsünde RSÜ algoritmasının çalıştırılması
+sonucunda elde edilen monobit, ki-kare ve runs testlerine ait
+örnek çıktı gösterilmektedir.
+
+
+🔧 Kurulum ve Çalıştırma
+Gereksinimler
+
+Python 3.9 veya üzeri
+
+Git
+
+Kurulum Adımları
+
+Depoyu bilgisayarınıza klonlayın:
+
+git clone https://github.com/selanurayaz/rng-jpeg-quant.git
+cd rng-jpeg-quant
+
+(İsteğe bağlı ancak önerilir) Sanal ortam oluşturun:
+
+python -m venv .venv
+
+Sanal ortamı aktif edin:
+
+.venv\Scripts\activate
+
+Gerekli Python paketlerini yükleyin:
+
+pip install -r requirements.txt
+
+
+Projenin Çalıştırılması
+
+images/ klasörü içerisine en az bir adet .jpg veya .png formatında
+görüntü dosyası ekleyiniz.
+
+Ardından ana programı çalıştırınız:
+
+python main.py
+
 
 # RNG-Based JPEG Quantization Table Experiment
 
