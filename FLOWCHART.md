@@ -35,3 +35,12 @@ Display / Save Results
   |
   v
 End
+
+
+# RSÜ (XORSHIFT32) Algorithm Flowchart
+
+The following flowchart illustrates the working principle of the
+XORSHIFT32-based random number generator and the applied
+statistical tests.
+
+![RSÜ XORSHIFT32 Flowchart](results/rsu_flowchart.png)
