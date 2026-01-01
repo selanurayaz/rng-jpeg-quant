@@ -80,14 +80,17 @@ Depoyu bilgisayarınıza klonlayın:
 ```bash
 git clone https://github.com/selanurayaz/rng-jpeg-quant.git
 cd rng-jpeg-quant
+```
 
 (İsteğe bağlı ancak önerilir) Sanal ortam oluşturun:
 ```bash
 python -m venv .venv
+```
 
 Sanal ortamı aktif edin:
 ```bash
 .venv\Scripts\activate
+```
 
 Projenin Çalıştırılması
 
@@ -97,6 +100,7 @@ görüntü dosyası ekleyiniz.
 Ardından ana programı çalıştırınız:
 ```bash
 python main.py
+```
 
 
 🛠 Kullanılan Teknolojiler
