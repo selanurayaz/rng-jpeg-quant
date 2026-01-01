@@ -4,9 +4,10 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from skimage.metrics import peak_signal_noise_ratio as psnr
+from collections import Counter
 
 # =========================================================
-# 1) RNG: XORSHIFT32 (simple PRNG) - Educational Purpose
+# 1) RSÜ / PRNG: XORSHIFT32 (Educational Purpose)
 # =========================================================
 class XorShift32:
     def __init__(self, seed: int = 2463534242):
@@ -17,7 +18,7 @@ class XorShift32:
     def next_u32(self) -> int:
         x = self.state
         x ^= (x << 13) & 0xFFFFFFFF
-        x ^= (x >> 17)
+        x ^= (x >> 17) & 0xFFFFFFFF
         x ^= (x << 5) & 0xFFFFFFFF
         self.state = x & 0xFFFFFFFF
         return self.state
@@ -32,7 +33,97 @@ class XorShift32:
 
 
 # =========================================================
-# 2) Standard JPEG Luminance Quantization Table (Reference)
+# 2) RSÜ Output Helpers (bit/byte stream)
+# =========================================================
+def rng_bytes(rng: XorShift32, n_bytes: int) -> bytes:
+    out = bytearray()
+    for _ in range(n_bytes):
+        out.append(rng.rand_int(0, 255))
+    return bytes(out)
+
+def bytes_to_bits(data: bytes) -> list[int]:
+    bits: list[int] = []
+    for b in data:
+        for i in range(7, -1, -1):  # MSB -> LSB
+            bits.append((b >> i) & 1)
+    return bits
+
+
+# =========================================================
+# 3) Statistical Tests (Educational)
+# =========================================================
+def monobit_test(bits: list[int]) -> dict:
+    n = len(bits)
+    ones = sum(bits)
+    zeros = n - ones
+    return {
+        "n_bits": n,
+        "zeros": zeros,
+        "ones": ones,
+        "p_zeros": zeros / n if n else 0.0,
+        "p_ones": ones / n if n else 0.0,
+        "diff": abs(ones - zeros),
+    }
+
+def chisquare_test_bytes(data: bytes) -> dict:
+    """
+    Chi-square test over byte frequencies (0..255).
+    This is a basic uniformity check (educational).
+    """
+    n = len(data)
+    expected = n / 256.0 if n else 0.0
+    counts = Counter(data)
+
+    chi2 = 0.0
+    if expected > 0:
+        for v in range(256):
+            obs = counts.get(v, 0)
+            chi2 += ((obs - expected) ** 2) / expected
+
+    return {
+        "n_bytes": n,
+        "expected_per_value": expected,
+        "chi2": chi2,
+        "df": 255,
+    }
+
+def runs_test(bits: list[int]) -> dict:
+    """
+    Runs (seri) testi: 0/1 değişim sayısı.
+    """
+    n = len(bits)
+    if n == 0:
+        return {"n_bits": 0, "runs": 0, "zeros": 0, "ones": 0}
+
+    runs = 1
+    for i in range(1, n):
+        if bits[i] != bits[i - 1]:
+            runs += 1
+
+    ones = sum(bits)
+    zeros = n - ones
+    return {"n_bits": n, "runs": runs, "zeros": zeros, "ones": ones}
+
+def run_rsu_tests(seed: int, n_bytes: int = 200_000) -> dict:
+    rng = XorShift32(seed)
+    data = rng_bytes(rng, n_bytes)
+    bits = bytes_to_bits(data)
+
+    mono = monobit_test(bits)
+    chi = chisquare_test_bytes(data)
+    run = runs_test(bits)
+
+    return {
+        "seed": seed,
+        "n_bytes": n_bytes,
+        "monobit": mono,
+        "chisquare": chi,
+        "runs": run,
+    }
+
+
+# =========================================================
+# 4) JPEG Quantization Experiment (Reference Table)
 # =========================================================
 QSTD_LUMA = np.array([
     [16, 11, 10, 16, 24, 40, 51, 61],
@@ -45,25 +136,20 @@ QSTD_LUMA = np.array([
     [72, 92, 95, 98, 112, 100, 103, 99]
 ], dtype=np.int32)
 
-
 def ensure_dirs() -> None:
     os.makedirs("results", exist_ok=True)
     os.makedirs("images", exist_ok=True)
 
-
 def file_kb(path: str) -> float:
     return os.path.getsize(path) / 1024.0
 
-
 def save_jpeg_opencv(img_bgr: np.ndarray, out_path: str, quality: int) -> None:
-    # OpenCV uses IMWRITE_JPEG_QUALITY (0-100)
     cv2.imwrite(out_path, img_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), int(quality)])
-
 
 def generate_quant_table_from_rng(seed: int, alpha: float = 0.15) -> np.ndarray:
     """
-    Generate a new 8x8 quantization-like table by perturbing QSTD_LUMA using RNG.
-    alpha controls perturbation strength (0.05..0.25 recommended).
+    Create an 8x8 'quantization-like' table by perturbing QSTD_LUMA.
+    (OpenCV doesn't allow custom quant tables directly, so we visualize & map it.)
     """
     rng = XorShift32(seed)
     q = QSTD_LUMA.astype(np.float32).copy()
@@ -71,20 +157,19 @@ def generate_quant_table_from_rng(seed: int, alpha: float = 0.15) -> np.ndarray:
     noise = np.zeros((8, 8), dtype=np.float32)
     for i in range(8):
         for j in range(8):
-            r = (rng.rand_float01() * 2.0) - 1.0  # [-1, +1]
+            r = (rng.rand_float01() * 2.0) - 1.0
             noise[i, j] = r
 
     q_new = q * (1.0 + alpha * noise)
     q_new = np.clip(np.round(q_new), 1, 255).astype(np.int32)
 
-    # Soft constraint: higher frequency roughly larger numbers
+    # soft increase with frequency
     for i in range(8):
         for j in range(8):
             freq_weight = 1 + (i + j) * 0.03
             q_new[i, j] = int(np.clip(round(q_new[i, j] * freq_weight), 1, 255))
 
     return q_new
-
 
 def plot_and_save_quant_tables(q_std: np.ndarray, q_new: np.ndarray) -> None:
     plt.figure()
@@ -105,62 +190,80 @@ def plot_and_save_quant_tables(q_std: np.ndarray, q_new: np.ndarray) -> None:
 
 
 # =========================================================
-# 3) Simple XOR-based Encryption Demo (RNG usage)
-# Educational only - NOT cryptographically secure.
+# 5) Simple XOR "Encryption" Demo (Educational)
 # =========================================================
 def xor_encrypt_text(text: str, seed: int) -> bytes:
     rng = XorShift32(seed)
     data = text.encode("utf-8")
     out = bytearray()
     for b in data:
-        key_byte = rng.rand_int(0, 255)
-        out.append(b ^ key_byte)
+        out.append(b ^ rng.rand_int(0, 255))
     return bytes(out)
-
 
 def xor_apply_keystream(data: bytes, seed: int) -> bytes:
     rng = XorShift32(seed)
     out = bytearray()
     for b in data:
-        key_byte = rng.rand_int(0, 255)
-        out.append(b ^ key_byte)
+        out.append(b ^ rng.rand_int(0, 255))
     return bytes(out)
 
 
 # =========================================================
-# MAIN EXPERIMENT
+# MAIN
 # =========================================================
 def main():
     ensure_dirs()
 
-    # --- Settings ---
+    # ---- Settings ----
     seed = 123456
     alpha = 0.15
     base_quality = 50
-    # ---------------
+    rsu_test_bytes = 200_000  # 200k bytes ~ 1.6M bits
+    # ------------------
 
-    # Load images from images/
-    image_paths = sorted(
-        glob.glob("images/*.jpg")
-        + glob.glob("images/*.png")
-        + glob.glob("images/*.jpeg")
-    )
+    # =========================
+    # RSÜ Statistical Tests
+    # =========================
+    rsu = run_rsu_tests(seed=seed, n_bytes=rsu_test_bytes)
+    mono = rsu["monobit"]
+    chi = rsu["chisquare"]
+    run = rsu["runs"]
 
+    print("\n=== RSÜ Statistical Tests (Educational) ===")
+    print(f"Seed={seed} | Bytes={rsu['n_bytes']} | Bits={mono['n_bits']}")
+    print(f"Monobit: zeros={mono['zeros']} ones={mono['ones']} p1={mono['p_ones']:.4f} p0={mono['p_zeros']:.4f}")
+    print(f"Chi-square (bytes 0..255): chi2={chi['chi2']:.2f} df={chi['df']}")
+    print(f"Runs: {run['runs']} (zeros={run['zeros']}, ones={run['ones']})")
+
+    with open("results/rsu_tests.txt", "w", encoding="utf-8") as f:
+        f.write("RSÜ Statistical Tests (Educational)\n")
+        f.write(f"Seed: {seed}\n")
+        f.write(f"Generated bytes: {rsu['n_bytes']}\n")
+        f.write(f"Generated bits: {mono['n_bits']}\n\n")
+        f.write("Monobit Test:\n")
+        f.write(f"  zeros={mono['zeros']} ones={mono['ones']}\n")
+        f.write(f"  p(1)={mono['p_ones']:.6f} p(0)={mono['p_zeros']:.6f}\n")
+        f.write(f"  diff={mono['diff']}\n\n")
+        f.write("Chi-square Test (0..255 byte frequencies):\n")
+        f.write(f"  chi2={chi['chi2']:.6f} df={chi['df']}\n")
+        f.write(f"  expected per value={chi['expected_per_value']:.3f}\n\n")
+        f.write("Runs Test:\n")
+        f.write(f"  runs={run['runs']} zeros={run['zeros']} ones={run['ones']}\n")
+
+    # =========================
+    # JPEG Quantization Experiment
+    # =========================
+    image_paths = sorted(glob.glob("images/*.jpg") + glob.glob("images/*.png") + glob.glob("images/*.jpeg"))
     if not image_paths:
-        raise SystemExit(
-            "No images found in ./images . Put at least one .jpg or .png there (e.g., images/test1.jpg)."
-        )
+        raise SystemExit("No images found in ./images. Put at least one image (e.g., images/test1.jpg).")
 
-    # Generate RNG-derived quantization-like table
     q_new = generate_quant_table_from_rng(seed, alpha=alpha)
 
-    # Map table aggressiveness into a quality value (OpenCV limitation)
     std_mean = float(QSTD_LUMA.mean())
     new_mean = float(q_new.mean())
-    ratio = new_mean / std_mean
+    ratio = new_mean / std_mean if std_mean != 0 else 1.0
     quality_rng = int(np.clip(round(base_quality / ratio), 5, 95))
 
-    # Save quant tables as images
     plot_and_save_quant_tables(QSTD_LUMA, q_new)
 
     rows = []
@@ -176,7 +279,6 @@ def main():
         save_jpeg_opencv(img_bgr, out_std, base_quality)
         save_jpeg_opencv(img_bgr, out_rng, quality_rng)
 
-        # Read back for PSNR computation
         rec_std = cv2.imread(out_std, cv2.IMREAD_COLOR)
         rec_rng = cv2.imread(out_rng, cv2.IMREAD_COLOR)
 
@@ -197,18 +299,15 @@ def main():
             "rng_psnr": psnr_rng,
         })
 
-    # Print summary
-    print("\n=== Experiment Summary ===")
+    print("\n=== JPEG Experiment Summary ===")
     print(f"Seed={seed}, alpha={alpha}")
     print(f"Base JPEG quality={base_quality}")
     print(f"RNG-derived table mean ratio={ratio:.3f} => mapped rng_quality={quality_rng}")
-
     print("\nImage | StdKB | RngKB | StdPSNR | RngPSNR")
     print("----- | ----- | ----- | ------- | -------")
     for r in rows:
         print(f"{r['image']} | {r['std_kb']:.1f} | {r['rng_kb']:.1f} | {r['std_psnr']:.2f} | {r['rng_psnr']:.2f}")
 
-    # Save markdown summary
     with open("results/summary.md", "w", encoding="utf-8") as f:
         f.write("# Results Summary\n\n")
         f.write(f"- Seed: `{seed}`\n- alpha: `{alpha}`\n")
@@ -218,16 +317,13 @@ def main():
         f.write("| Image | Std Quality | RNG Quality | Std Size (KB) | RNG Size (KB) | Std PSNR | RNG PSNR |\n")
         f.write("|---|---:|---:|---:|---:|---:|---:|\n")
         for r in rows:
-            f.write(
-                f"| {r['image']} | {r['std_quality']} | {r['rng_quality']} | "
-                f"{r['std_kb']:.1f} | {r['rng_kb']:.1f} | {r['std_psnr']:.2f} | {r['rng_psnr']:.2f} |\n"
-            )
+            f.write(f"| {r['image']} | {r['std_quality']} | {r['rng_quality']} | {r['std_kb']:.1f} | {r['rng_kb']:.1f} | {r['std_psnr']:.2f} | {r['rng_psnr']:.2f} |\n")
 
-    print("\nSaved: results/summary.md and output images in results/")
+    print("\nSaved: results/summary.md, results/rsu_tests.txt and outputs in results/")
 
-    # =========================================================
-    # Simple Encryption Demo Output
-    # =========================================================
+    # =========================
+    # Simple Encryption Demo
+    # =========================
     demo_text = "StudentID:123456"
     encrypted = xor_encrypt_text(demo_text, seed)
     decrypted = xor_apply_keystream(encrypted, seed).decode("utf-8")
@@ -236,7 +332,7 @@ def main():
     print("Plaintext       :", demo_text)
     print("Encrypted (hex) :", encrypted.hex())
     print("Decrypted       :", decrypted)
-    print("NOTE: This XOR demo is NOT cryptographically secure and is included for educational purposes only.")
+    print("NOTE: XOR demo is NOT cryptographically secure. Included for educational purposes only.")
 
 
 if __name__ == "__main__":
