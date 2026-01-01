@@ -15,6 +15,11 @@ ki-kare testi ve runs testi ile istatistiksel olarak
 değerlendirilmektedir.
 
 
+
+
+
+
+
 INPUT:
     seed (integer)
     N (number of random values to generate)
