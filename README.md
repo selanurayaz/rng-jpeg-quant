@@ -1,3 +1,54 @@
+---
+
+# RNG Tabanlı JPEG Kuantalama Tablosu Deneyi
+
+Bu çalışmada, rastgeleliğin sıkıştırma sistemlerindeki rolünü incelemek amacıyla
+basit bir sözde rastgele sayı üreteci (XORSHIFT32) gerçekleştirilmiştir.
+
+Rastgele sayı üreteci doğrudan veri şifrelemek için kullanılmamış; bunun yerine
+standart JPEG parlaklık (luminance) kuantalama tablosu üzerinde kontrollü
+pertürbasyonlar uygulayarak alternatif bir 8x8 kuantalama tablosu üretmek için
+kullanılmıştır.
+
+## Yöntem
+- Sözde rastgele sayı üreteci (XORSHIFT32) 구현 edildi
+- RNG kullanılarak yeni bir kuantalama-benzeri tablo üretildi
+- OpenCV kullanılarak JPEG sıkıştırma uygulandı
+- OpenCV özel kuantalama tablolarını doğrudan desteklemediği için,
+  üretilen tablonun kuantalama agresifliği JPEG kalite parametresine eşlendi
+- Sıkıştırma performansı dosya boyutu ve PSNR metriği kullanılarak değerlendirildi
+
+## Sonuçlar
+RNG tabanlı yapılandırmanın, benzer PSNR değerleri korunurken daha küçük dosya
+boyutu elde edilmesini sağladığı gözlemlenmiştir. Bu durum, sıkıştırma–kalite
+dengesi açısından olumlu bir sonuç olarak değerlendirilmiştir.
+
+## Çıktılar
+- `results/summary.md`: sayısal karşılaştırma sonuçları
+- `results/*_std_*.jpg`: standart JPEG çıktıları
+- `results/*_rng_*.jpg`: RNG tabanlı JPEG çıktıları
+- `results/quant_tables_*.png`: kuantalama tablolarının görselleştirilmesi
+
+## Kullanılan Teknolojiler
+Python, NumPy, OpenCV, scikit-image
+
+## Güvenlik Perspektifi
+Bu çalışmada kullanılan rastgele sayı üreteci kriptografik olarak güvenli değildir.
+Ancak deney, rastgelelik kalitesinin olasılıksal davranışa dayanan sistemler
+üzerindeki etkisini göstermektedir.
+
+Zayıf veya tahmin edilebilir rastgelelik; hem güvenlik odaklı uygulamalarda
+hem de multimedya işleme sistemlerinde olumsuz sonuçlara yol açabilir.
+
+## Basit Şifreleme Gösterimi
+Projeye, rastgele sayı üretecinin şifreleme bağlamında nasıl kullanılabileceğini
+göstermek amacıyla XOR tabanlı basit bir şifreleme örneği eklenmiştir.
+
+Bu örnek yalnızca **eğitsel amaçlıdır** ve **kriptografik olarak güvenli değildir**.
+Amaç, güvenlik sistemlerinde rastgelelik kalitesinin önemini vurgulamaktır.
+
+
+
 # RNG-Based JPEG Quantization Table Experiment
 
 In this study, a simple pseudo-random number generator (XORSHIFT32) was implemented
